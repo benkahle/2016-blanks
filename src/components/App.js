@@ -1,10 +1,13 @@
 import React, { Component } from 'react'
+import { connect } from 'react-redux'
+import { browserHistory } from 'react-router'
 import firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/storage'
 import 'firebase/database'
 
-import logo from '../logo.svg'
+import { login } from './AppRouter'
+import { setUser } from '../actions'
 import '../styles/App.scss'
 
 var config = {
@@ -17,22 +20,67 @@ var config = {
 }
 firebase.initializeApp(config)
 
-export { firebase }
+const mapStateToProps = (state, ownProps) => {
+  return {
+    user: state.user
+  }
+}
 
-class App extends Component {
+const mapDispatchToProps = (dispatch, ownProps) => {
+  return {
+    setUser: (user) => {
+      dispatch(setUser(user))
+    }
+  }
+}
+
+export class App extends Component {
+  componentWillMount () {
+    firebase.auth().getRedirectResult().then(result => {
+      if (result && result.user) {
+        let user = result.user
+        if (result.credential) {
+          user.userToken = result.credential.accessToken
+        }
+        this.props.setUser(user)
+        browserHistory.replace('/')
+      }
+    }).catch(error => {
+      // Handle Errors here.
+      const errorCode = error.code
+      const errorMessage = error.message
+      // The email of the user's account used.
+      const email = error.email
+      // The firebase.auth.AuthCredential type that was used.
+      const credential = error.credential
+      console.error(errorCode, errorMessage, email, credential)
+    })
+  }
+
   render () {
     return (
       <div className='App'>
         <div className='App-header'>
-          <img src={logo} className='App-logo' alt='logo' />
-          <h2>Welcome to React</h2>
+          <h2>Welcome to 2016 ____s</h2>
+          <p className='App-intro'>
+            The current year is 2017.
+          </p>
+          {
+            this.props.user.id
+            ? <div>Welcome, {this.props.user.displayName}</div>
+            : <button onClick={login}>Login</button>
+          }
         </div>
-        <p className='App-intro'>
-          To get started, edit <code>src/App.js</code> and save to reload.
-        </p>
+        {this.props.children}
       </div>
     )
   }
 }
 
-export default App
+const AppContainer = connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(App)
+
+export { firebase }
+export default AppContainer
